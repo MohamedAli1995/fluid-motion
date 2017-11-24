@@ -1,13 +1,20 @@
 import numpy as np
 import cv2
-def detect_one_face(im):
-    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+faceExist = False;  # to figure out wether at least face exist or no
+faceWasDetectedBefore=False;
 
-    faces = face_cascade.detectMultiScale(gray, 1.2, 3)
+face_cascade = cv2.CascadeClassifier('front_face.xml')
+def detectSingleFace(frame):
+    print(frame)
+    # haar cascade face detection
+    faces = face_cascade.detectMultiScale(frame, 1.3, 5) #using haar cascade classifier to detect faces in image
+    if len(faces)!=1:
+        return [False, (0, 0, 0, 0)]
+        faceExist=True;
 
-    if len(faces) == 0:
-        return (0, 0, 0, 0)
-    return faces[0]
+
+
+    return [True,faces[0]]
 
 
 def hsv_histogram_for_window(frame, window):
@@ -115,26 +122,32 @@ to_detect_hands=False
 
 
 
-face_cascade = cv2.CascadeClassifier('front_face.xml')
 
 cap = cv2.VideoCapture(0)
 
 fgbg = cv2.createBackgroundSubtractorMOG2(history=150,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 cv2.namedWindow('edged_fgbmask')
 cv2.setMouseCallback('edged_fgbmask', mouseHandler)
+x=0
+y=0
+w=0
+h=0
 while(1):
     ret, frame = cap.read()
     frame = cv2.flip(frame, 1)#flip image to adjust it
-    # haar cascade face detection
-    faces = face_cascade.detectMultiScale(frame, 1.3, 5) #using haar cascade classifier to detect faces in image
-    faceExist=False; # to figure out wether at least face exist or no
-    if len(faces)!=0:
-        #print("zero faces ////")
-        faceExist=True;
 
-    for (x, y, w, h) in faces: # loop through faces to draw black rectangle
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0,255), 2)
-        frame[y:y + w, x:x + h] = [0,0,0];
+    faceExist,face=detectSingleFace(frame);
+    if faceExist:
+        [x, y, w, h] = face
+        print(" ( ",x," , ",y," , ", w , " , ",h," ) ")
+        if faceWasDetectedBefore==False:
+            faceWasDetectedBefore=True;
+
+    if faceWasDetectedBefore:
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        frame[y:y + w, x:x + h] = [0, 0, 0];
+
+
 
     non_blurred_frame=frame
     fgmask = fgbg.apply(frame)  #apply background subtractor to get current frame - average(history frames )
@@ -155,20 +168,20 @@ while(1):
 
     edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)# edges per area ( fixed area)
     minVal, maxVal, minLoc, maxLoc=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
-    print("min val : "  ,minVal," max val ",maxVal," min Loc ",minLoc," max Loc ",maxLoc)
+    #print("min val : "  ,minVal," max val ",maxVal," min Loc ",minLoc," max Loc ",maxLoc)
     tempx1,tempy1=maxLoc
 
     # yield the current window
 
     if faceExist: # if face exist then draw box over point of maximum edges per area
         #print("fab..")
-        if maxVal>5.0:
+        if maxVal>10.0:
             to_detect_hands = True;
             tempx1_new, tempy1_new=tempx1,tempy1
     if to_detect_hands:
         cv2.rectangle(frame, (tempx1_new - 60, tempy1_new - 60), (tempx1_new + 70, tempy1_new + 100), [255, 0, 0], 3)
     else:
-        print("face error ")
+       print("face error ")
    # cv2.imshow('fgmask x normalized skin', fgmask_on_skin)
     cv2.imshow('original Frame', frame)
     #cv2.imshow('fgmask',fgmask)
