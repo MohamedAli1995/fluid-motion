@@ -15,17 +15,17 @@ frame_max_x=0;
 frame_max_y=0;
 def updateHandRect(frame,maxLoc):
     [x,y]=maxLoc
-    [tempx,tempy]=maxLoc
-    [tempx_right, tempy_bottom] = maxLoc
+    [tempx,tempy]=maxLoc[0]-50,maxLoc[1]-50
+    [tempx_right, tempy_bottom] = maxLoc[0]+50,maxLoc[1]+50
     while(np.sum(np.sum(frame[tempy-50:tempy+50,tempx-5:tempx+5]))!=0):
-        tempx-=5
+        tempx-=1
     while (np.sum(np.sum(frame[tempy - 50:tempy + 50, tempx_right -5:tempx_right +5]))!= 0 and tempx_right+5<frame_max_x):
-        tempx_right += 5
+        tempx_right += 1
 
     while (np.sum(np.sum(frame[tempy-5:tempy+5 , x-50:x+50])) != 0):
-        tempy -= 5
+        tempy -= 1
 
-    tempy_bottom=tempy+200 # TODO: make height as a ratio of width
+    tempy_bottom=tempy+150 # TODO: make height as a ratio of width
     #if tempy or tempx falls below 0
     tempy=np.maximum(0,tempy)
     tempy=np.minimum(frame_max_y-1,tempy)
@@ -253,8 +253,8 @@ while(1):
             pixels_summation = np.sum(np.sum(fgmask_on_skin[tempy1 - b:tempy1 +d,tempx1 - a:tempx1 + c]))
             if(pixels_summation>100 or True ):#not working ##4 is threshold for summing white pixels of moving object as 2nd feature
                 to_detect_hands = True;
-                [a,b,c,d]=updateHandRect(fgmask_on_skin,maxLoc)
-                tempx1_new, tempy1_new = a,b
+                [a,b,c,d]=updateHandRect(edged_fgbmask,maxLoc)
+                tempx1_new, tempy1_new = tempx1,tempy1
 
             #print("pixels summation : ", pixels_summation/10000," max value ",maxVal)
         else:
@@ -265,7 +265,7 @@ while(1):
         #[a,b,c,d]=hand_region_Window
         #[wristx, wristy]=getWristPoints(frame[tempy1_new - b:tempy1_new +d,tempx1_new - a:tempx1_new + c])
         print(" top left : (x1,y1)(x2,y2)  (", a, " , ", b, " ) (",c, " , ",d, " ) ")
-        cv2.rectangle(frame, (a,b), (c,d), [0, 1, 0.5], 3)
+        cv2.rectangle(frame, (tempx1_new-50, tempy1_new-50), (tempx1_new+100, tempy1_new+100), [0, 1, 0.5], 3)
 
     cv2.imshow('fgmask x normalized skin', fgmask_on_skin)
     cv2.imshow('original Frame', frame)
@@ -276,7 +276,7 @@ while(1):
     #cv2.imshow('edges_per_area_image', edges_per_area_image)
    # print(x1)
     if draw:
-        cv2.rectangle(edged_fgbmask, (x1, y1), (x2, y2), 255, 3)
+        cv2.rectangle(edged_fgbmask, (tempx1_new-50, tempy1_new-50), (tempx1_new+100, tempy1_new+100), 255, 3)
 
 
     cv2.imshow('edged_fgbmask',edged_fgbmask)
