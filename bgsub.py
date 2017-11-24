@@ -125,9 +125,10 @@ to_detect_hands=False
 
 cap = cv2.VideoCapture(0)
 
+
 fgbg = cv2.createBackgroundSubtractorMOG2(history=150,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 cv2.namedWindow('edged_fgbmask')
-cv2.setMouseCallback('edged_fgbmask', mouseHandler)
+#cv2.setMouseCallback('edged_fgbmask', mouseHandler)
 x=0
 y=0
 w=0
