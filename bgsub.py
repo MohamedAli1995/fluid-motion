@@ -119,49 +119,48 @@ face_cascade = cv2.CascadeClassifier('front_face.xml')
 
 cap = cv2.VideoCapture(0)
 
-fgbg = cv2.createBackgroundSubtractorMOG2(history=150,detectShadows=False)
+fgbg = cv2.createBackgroundSubtractorMOG2(history=150,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 cv2.namedWindow('edged_fgbmask')
 cv2.setMouseCallback('edged_fgbmask', mouseHandler)
 while(1):
     ret, frame = cap.read()
-    frame = cv2.flip(frame, 1)
+    frame = cv2.flip(frame, 1)#flip image to adjust it
     # haar cascade face detection
-    faces = face_cascade.detectMultiScale(frame, 1.3, 5)
-    faceExist=False;
+    faces = face_cascade.detectMultiScale(frame, 1.3, 5) #using haar cascade classifier to detect faces in image
+    faceExist=False; # to figure out wether at least face exist or no
     if len(faces)!=0:
         #print("zero faces ////")
         faceExist=True;
 
-    for (x, y, w, h) in faces:
+    for (x, y, w, h) in faces: # loop through faces to draw black rectangle
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0,255), 2)
         frame[y:y + w, x:x + h] = [0,0,0];
 
     non_blurred_frame=frame
-    fgmask = fgbg.apply(frame)
-    im_ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
-    fgmask_normalized=np.uint8(np.double(fgmask)/255.0)
-    skin_ycrcb_mint = np.array((0, 133, 77))
-    skin_ycrcb_maxt = np.array((255, 173, 127))
-    skin_ycrcb = cv2.inRange(im_ycrcb, skin_ycrcb_mint, skin_ycrcb_maxt)
-    normalized_skin=np.uint8(np.double(skin_ycrcb)/255.0)
-    normalized_skin_3D=cv2.cvtColor(normalized_skin, cv2.COLOR_GRAY2RGB);
-    fgmask_on_skin=np.uint8(fgmask*normalized_skin)
-    fgmask_on_skin_normalized=np.uint8(np.double(fgmask_on_skin)/255.0)
+    fgmask = fgbg.apply(frame)  #apply background subtractor to get current frame - average(history frames )
+    im_ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB) # convert RGB to YCR_CB to threshold skin color
+    fgmask_normalized=np.uint8(np.double(fgmask)/255.0) #normalizing  fgmask ( frame-avg(history frames)
+    skin_ycrcb_mint = np.array((0, 133, 77)) # threshold for skin color max
+    skin_ycrcb_maxt = np.array((255, 173, 127))#threshold for skin color
+    skin_ycrcb = cv2.inRange(im_ycrcb, skin_ycrcb_mint, skin_ycrcb_maxt)  #thresholding frame to get skin color only
+    normalized_skin=np.uint8(np.double(skin_ycrcb)/255.0)#normalizing  skin_ycrbcb
+    normalized_skin_3D=cv2.cvtColor(normalized_skin, cv2.COLOR_GRAY2RGB); #convert greyscale normalized skin_ycrbcb to rgb  to be multiplied by frame (rgb)
+    fgmask_on_skin=np.uint8(fgmask*normalized_skin) # skin color of moving parts * original frame
+    fgmask_on_skin_normalized=np.uint8(np.double(fgmask_on_skin)/255.0) #normalized skin color of moving parts * original frame
     fgmask_on_skin_3D=np.uint8(np.double(cv2.cvtColor(fgmask_on_skin, cv2.COLOR_GRAY2RGB))/255.0);
     rgb_masked_image=fgmask_on_skin_3D*frame
-    edged_fgbmask = cv2.Canny(normalized_skin_3D*frame, 35, 125)*fgmask_on_skin_normalized
+    edged_fgbmask = cv2.Canny(normalized_skin_3D*frame, 35, 125)*fgmask_on_skin_normalized # applying canny edge detection
 
+    kernel = np.ones((100, 100), np.double) / (100*100) #filter to calculate edges within a box
 
-    kernel = np.ones((100, 100), np.double) / (100*100)
-
-    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)
-    minVal, maxVal, minLoc, maxLoc=cv2.minMaxLoc(edges_per_area_image)
+    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)# edges per area ( fixed area)
+    minVal, maxVal, minLoc, maxLoc=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
     print("min val : "  ,minVal," max val ",maxVal," min Loc ",minLoc," max Loc ",maxLoc)
     tempx1,tempy1=maxLoc
 
     # yield the current window
 
-    if faceExist:
+    if faceExist: # if face exist then draw box over point of maximum edges per area
         #print("fab..")
         if maxVal>5.0:
             to_detect_hands = True;
