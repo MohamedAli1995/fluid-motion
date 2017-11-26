@@ -5,6 +5,9 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import time;
+
+frameHistory=300
+
 #tracing points to determine action
 tracing_points=deque([])
 tracing_points_max=5
@@ -27,14 +30,14 @@ b=0
 c=0
 d=0
 
-begin=datetime.now()
+begin=datetime.now();
 frames_count=0;
 frame_max_x=0;
 frame_max_y=0;
 def updateHandRect(frame,maxLoc,skin_ycrcb):
     [x,y]=maxLoc
-    [tempx,tempy]=maxLoc[0]-50,maxLoc[1]-50
-    [tempx_right, tempy_bottom] = maxLoc[0]+50,maxLoc[1]+50
+    [tempx,tempy]=maxLoc[0],maxLoc[1]
+    [tempx_right, tempy_bottom] = maxLoc[0],maxLoc[1]
     while(np.sum(np.sum(frame[tempy-50:tempy+50,tempx-5:tempx+5]))!=0):
         tempx-=1
     while (np.sum(np.sum(frame[tempy - 50:tempy + 50, tempx_right -5:tempx_right +5]))!= 0 and tempx_right+5<frame_max_x):
@@ -197,13 +200,20 @@ cap = cv2.VideoCapture(0)
 
 
 
-fgbg = cv2.createBackgroundSubtractorMOG2(history=60,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
+fgbg = cv2.createBackgroundSubtractorMOG2(history=frameHistory,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 cv2.namedWindow('edged_fgbmask')
 #cv2.setMouseCallback('edged_fgbmask', mouseHandler)
 x=0
 y=0
 w=0
 h=0
+
+skin_ycrcb_mint = np.array((0, 133, 77))  # threshold for skin color max
+skin_ycrcb_maxt = np.array((255, 173, 127))  # threshold for skin color
+
+#matrice for erosion and dilation filled with ones
+kernel_erosion = np.ones((5, 5), np.uint8)
+kernel_dilation = np.ones((3, 3), np.uint8)
 
 while(1):
     ret, frame = cap.read()
@@ -232,35 +242,55 @@ while(1):
     if faceWasDetectedBefore:
 
         #cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        #blacking the face area
         frame[y:y + w, x:x + h] = [0, 0, 0];
 
 
     test_time_1=datetime.now()
+
+    #currently not used
     non_blurred_frame=frame
+
+    #frame difference is store in fgmask
     fgmask = fgbg.apply(frame)  #apply background subtractor to get current frame - average(history frames )
-    im_ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB) # convert RGB to YCR_CB to threshold skin color
-    fgmask_normalized=np.uint8(np.double(fgmask)/255.0) #normalizing  fgmask ( frame-avg(history frames)
-    skin_ycrcb_mint = np.array((0, 133, 77)) # threshold for skin color max
-    skin_ycrcb_maxt = np.array((255, 173, 127))#threshold for skin color
-    skin_ycrcb = cv2.inRange(im_ycrcb, skin_ycrcb_mint, skin_ycrcb_maxt)  #thresholding frame to get skin color only
-    kernel_erosion = np.ones((5, 5), np.uint8)
-    kernel_dilation = np.ones((3, 3), np.uint8)
-    skin_ycrcb = cv2.erode(skin_ycrcb, kernel_erosion, iterations=1)
 
-    normalized_skin=np.uint8(np.double(skin_ycrcb)/255.0)#normalizing  skin_ycrbcb
-    normalized_skin_3D=cv2.cvtColor(normalized_skin, cv2.COLOR_GRAY2RGB); #convert greyscale normalized skin_ycrbcb to rgb  to be multiplied by frame (rgb)
-    fgmask_on_skin=np.uint8(fgmask*normalized_skin) # skin color of moving parts * original frame
+    # convert RGB to YCR_CB to threshold skin color
+    im_ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
 
+    # normalizing  fgmask ( frame-avg(history frames)
+    fgmask_normalized=np.uint8((fgmask)/255)
+
+    # thresholding frame to get skin color only
+    skin_ycrcb = cv2.inRange(im_ycrcb, skin_ycrcb_mint, skin_ycrcb_maxt)
+
+    # TODO:fake numbers for matrices and iterations to get best results
+    skin_ycrcb = cv2.erode(skin_ycrcb, kernel_dilation, iterations=1)
+    skin_ycrcb = cv2.dilate(skin_ycrcb, kernel_dilation, iterations=1)
+
+
+    normalized_skin=np.uint8((skin_ycrcb)/255)#normalizing  skin_ycrbcb
+    # convert greyscale normalized skin_ycrbcb to rgb  to be multiplied by frame (rgb)
+    normalized_skin_3D=cv2.cvtColor(normalized_skin, cv2.COLOR_GRAY2RGB);
+
+    # moving skin parts.
+    fgmask_on_skin_normalized=np.uint8(fgmask_normalized*normalized_skin)
+
+    # TODO:fake numbers for matrices and iterations to get best results
+    fgmask_on_skin_normalized = cv2.erode(fgmask_on_skin_normalized, kernel_dilation, iterations=1)
+    fgmask_on_skin_normalized = cv2.dilate(fgmask_on_skin_normalized, kernel_dilation, iterations=1)
 
     #fgmask_on_skin = cv2.erode(fgmask_on_skin, kernel_erosion, iterations=1)
 
-    fgmask_on_skin_normalized=np.uint8(np.double(fgmask_on_skin)/255.0) #normalized skin color of moving parts * original frame
-    fgmask_on_skin_3D=np.uint8(np.double(cv2.cvtColor(fgmask_on_skin, cv2.COLOR_GRAY2RGB))/255.0);
+    #fgmask_on_skin_normalized=np.uint8(np.double(fgmask_on_skin)/255.0) #normalized skin color of moving parts * original frame
+    fgmask_on_skin_3D=np.uint8(cv2.cvtColor(fgmask_on_skin_normalized, cv2.COLOR_GRAY2RGB));
+
+
+    #now we have moving skin parts in the original image this is needed for testing with our eyes only
     rgb_masked_image=fgmask_on_skin_3D*frame
 
-    edged_fgbmask = cv2.Canny(normalized_skin_3D*frame, 35, 125)*fgmask_on_skin_normalized # applying canny edge detection
+    edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 125) # applying canny edge detection
 
-    #edged_fgbmask = cv2.dilate(edged_fgbmask, kernel_dilation, iterations=1)
+
     kernel = np.ones((101, 101), np.double) / (101*101) #filter to calculate edges within a box
 
     edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)# edges per area ( fixed area)
@@ -270,7 +300,7 @@ while(1):
 
     test_time_1=datetime.now()-test_time_1
     test_time_1=test_time_1.total_seconds()
-    print(" biggest opeartion delay  ",test_time_1)
+   # print(" biggest opeartion delay  ",test_time_1)
     #print("min val : "  ,minVal," max val ",maxVal," min Loc ",minLoc," max Loc ",maxLoc)
 
     tempx1,tempy1=maxLoc
@@ -288,9 +318,11 @@ while(1):
             #pixels_summation = np.sum(np.sum(fgmask_on_skin[tempy1 - b:tempy1 +d,tempx1 - a:tempx1 + c]))
             if(pixels_summation>100 or True ):#not working ##4 is threshold for summing white pixels of moving object as 2nd feature
                 to_detect_hands = True;
-    #            [left,top,dummy1,dummy2]=updateHandRect(edged_fgbmask,maxLoc,frame)#get top and left points of hands not working well
+                [left,top,right,bottom]=updateHandRect(edged_fgbmask,maxLoc,frame)#get top and left points of hands not working well
                 tempx1_new, tempy1_new = tempx1,tempy1
 
+                #edged_fgbmask[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100]
+                #edged_fgbmask = cv2.dilate(edged_fgbmask, kernel_dilation, iterations=1)
 
             #print("pixels summation : ", pixels_summation/10000," max value ",maxVal)
         else:
@@ -302,11 +334,13 @@ while(1):
 
         #[a,b,c,d]=hand_region_Window
         ret=updateTracingPoints(tempx1_new,tempy1_new)
+        #print(tracing_points)
         #if(ret==True):
             #action_state,action=getAction(tempx1_new,tempy1_new)
         #getWristPoints(skin_ycrcb,tempy1_new - b,tempy1_new +d,tempx1_new - a,tempx1_new + c)
         #sprint(" top left : (x1,y1)(x2,y2)  (", a, " , ", b, " ) (",c, " , ",d, " ) ")
         cv2.rectangle(frame, (tempx1_new-100, tempy1_new-100), (tempx1_new+100, tempy1_new+100), [0,255 , 0], 3)
+        cv2.rectangle(frame, (left, top), (right, bottom), [0,255 , 255], 3)
         #cv2.rectangle(skin_ycrcb, (tempx1_new-a, tempy1_new-b), (tempx1_new+c, tempy1_new+d), 155, 3)
    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
    # _, contours, _ = cv2.findContours(fgmask_on_skin[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -315,7 +349,7 @@ while(1):
     #print("contours size ", len(contours)," max x ",max_x," max_y ",max_y)
     frames_count+=1;
 
-    cv2.imshow('fgmask x normalized skin', fgmask_on_skin)
+    cv2.imshow('fgmask x normalized skin', fgmask_on_skin_normalized*255)
 
     cv2.imshow('fgmask',fgmask)
     cv2.imshow('fgmask colored',rgb_masked_image)
@@ -328,9 +362,7 @@ while(1):
     cv2.imshow("skin_ycrcb",skin_ycrcb)
     cv2.imshow('edged_fgbmask',edged_fgbmask)
     cv2.imshow('fgmask',skin_ycrcb)
-    for i in range(0,1000):
-        for j in range(0, 1000):
-            k=i
+
     cv2.imshow('original Frame', frame)
 
     k = cv2.waitKey(30) & 0xff
