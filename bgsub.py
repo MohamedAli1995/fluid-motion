@@ -1,5 +1,8 @@
 import numpy as np
+
 from collections import deque
+import action
+actionDetector=action.ActionDetector(10)
 import cv2
 from datetime import datetime
 
@@ -7,20 +10,6 @@ import matplotlib.pyplot as plt
 import time;
 
 frameHistory=400
-
-#tracing points to determine action
-tracing_points=deque([])
-tracing_points_max=5
-tracing_points_index=0
-def updateTracingPoints(x,y):
-    #global tracing_points
-    if tracing_points.__len__()==tracing_points_max:
-        tracing_points.popleft()
-        tracing_points.append([x,y])
-        return True
-    tracing_points.append([x,y])
-    return False
-
 hand_region_Window=[60,60,70,100]
 wristx=0
 wristy=0
@@ -246,7 +235,7 @@ cv2.moveWindow('fgmask x normalized skin',1400,0)
 cv2.moveWindow('fgmask',0,700)
 cv2.moveWindow('fgmask colored',720,700)
 cv2.moveWindow('skin_ycrcb',1420,700)
-
+frame_counter_temp=0
 while(1):
     ret, frame = cap.read()
     [frame_max_y,frame_max_x,dummy]=frame.shape
@@ -262,7 +251,8 @@ while(1):
     ############################################################
     ############################################################
 
-
+    frame_counter_temp+=1
+    print(frame_counter_temp)
 
     if faceExist:
         [x, y, w, h] = face
@@ -320,7 +310,7 @@ while(1):
     #now we have moving skin parts in the original image this is needed for testing with our eyes only
     rgb_masked_image=fgmask_on_skin_3D*frame
 
-    edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 135) # applying canny edge detection
+    edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 150) #applying canny edge detection
 
 
     kernel = np.ones((101, 101), np.double) / (101*101) #filter to calculate edges within a box
@@ -349,7 +339,7 @@ while(1):
            #  cv2.rectangle(frame, (tempx2 - 100, tempy2 - 100), (tempx2 + 100, tempy2 + 100), [255, 255, 255], 3)
 
 
-       if maxVal>5 and forget_frames <=0: # forget_frames used to wait until stablization
+       if maxVal>10 and forget_frames <=0: # forget_frames used to wait until stablization
             to_detect_hands = True;
             [left,top,right,bottom]=updateHandRect(edged_fgbmask,maxLoc,frame)#get top and left points of hands not working well
             tempx1_new, tempy1_new = tempx1,tempy1
@@ -363,20 +353,24 @@ while(1):
                 forget_frames-=1
             #print("max value ",maxVal)
     if to_detect_hands:
-
-
+        #update points traced for action detection
+        actionDetector.updateTracingPoints(tempx1_new,tempy1_new)
         #[a,b,c,d]=hand_region_Window
-        ret=updateTracingPoints(tempx1_new,tempy1_new)
+        ret=actionDetector.getTracingPoints()
+        #print(ret)
+        actionDetector.getAction()
         #print(tracing_points)
         #if(ret==True):
             #action_state,action=getAction(tempx1_new,tempy1_new)
         #getWristPoints(skin_ycrcb,tempy1_new - b,tempy1_new +d,tempx1_new - a,tempx1_new + c)
         #sprint(" top left : (x1,y1)(x2,y2)  (", a, " , ", b, " ) (",c, " , ",d, " ) ")
-        cv2.rectangle(frame, (tempx1_new-100, tempy1_new-100), (tempx1_new+100, tempy1_new+100), [0,255 , 0], 3)
-        cv2.rectangle(frame, (tempx2_new-100, tempy2_new-100), (tempx2_new+100, tempy2_new+100), [0,255 , 0], 3)
         cv2.rectangle(frame, (left, top), (right, bottom), [0,255 , 255], 3)
-        cv2.rectangle(frame, (left1, top1), (right1, bottom1), [0,255 , 255], 3)
+        cv2.rectangle(frame, (tempx1_new-100, tempy1_new-100), (tempx1_new+100, tempy1_new+100), [0,255 , 0], 3)
 
+        # drawing 2nd rectangles over the 2nd hand
+        #cv2.rectangle(frame, (tempx2_new-100, tempy2_new-100), (tempx2_new+100, tempy2_new+100), [0,255 , 0], 3)
+        #cv2.rectangle(frame, (left1, top1), (right1, bottom1), [0,255 , 255], 3)
+        ##########################
 
         #cv2.rectangle(skin_ycrcb, (tempx1_new-a, tempy1_new-b), (tempx1_new+c, tempy1_new+d), 155, 3)
    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -404,6 +398,9 @@ while(1):
 
 
     k = cv2.waitKey(30) & 0xff
+    if k==114:
+        #reset counter if 'r' is pressed //debugging mode 
+        frame_counter_temp=0
     if k == 27:
         break
 
