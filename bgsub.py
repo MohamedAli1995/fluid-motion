@@ -6,7 +6,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import time;
 
-frameHistory=300
+frameHistory=400
 
 #tracing points to determine action
 tracing_points=deque([])
@@ -193,6 +193,24 @@ def mouseHandler(event,x,y,flags,param):
         print("box size : ",x2-x1,"    |||   ", y2-y1)
 to_detect_hands=False
 
+#TODO:THIS FUNCTION
+def mouseHandler(event,x,y,flags,param):
+    global x1,x2,y1,y2,draw
+    if event == cv2.EVENT_LBUTTONDOWN:
+        x1=x
+        y1=y
+        draw=False
+    elif event == cv2.EVENT_LBUTTONUP:
+        x2=x
+        y2=y
+        draw=True
+        area=np.abs(x2-x1)*np.abs(y2-y1)
+        sum=np.sum(edged_fgbmask[y1:y2, x1:x2])
+        edge_per_area=np.double(np.double(sum)/np.double(area))
+        print(" sum of edge pixels per area = ")
+        print(edge_per_area)
+        print("box size : ",x2-x1,"    |||   ", y2-y1)
+
 
 
 
@@ -214,6 +232,20 @@ skin_ycrcb_maxt = np.array((255, 173, 127))  # threshold for skin color
 #matrice for erosion and dilation filled with ones
 kernel_erosion = np.ones((5, 5), np.uint8)
 kernel_dilation = np.ones((3, 3), np.uint8)
+
+cv2.namedWindow("original Frame");
+cv2.namedWindow("edged_fgbmask");
+cv2.namedWindow("fgmask x normalized skin");
+cv2.namedWindow("fgmask");
+cv2.namedWindow("fgmask colored");
+cv2.namedWindow("skin_ycrcb");
+
+cv2.moveWindow('original Frame',0,0)
+cv2.moveWindow('edged_fgbmask',720,0)
+cv2.moveWindow('fgmask x normalized skin',1400,0)
+cv2.moveWindow('fgmask',0,700)
+cv2.moveWindow('fgmask colored',720,700)
+cv2.moveWindow('skin_ycrcb',1420,700)
 
 while(1):
     ret, frame = cap.read()
@@ -288,15 +320,16 @@ while(1):
     #now we have moving skin parts in the original image this is needed for testing with our eyes only
     rgb_masked_image=fgmask_on_skin_3D*frame
 
-    edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 125) # applying canny edge detection
+    edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 135) # applying canny edge detection
 
 
     kernel = np.ones((101, 101), np.double) / (101*101) #filter to calculate edges within a box
 
     edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)# edges per area ( fixed area)
     minVal, maxVal, minLoc, maxLoc=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
-   # edges_per_area_image[maxLoc[1]-100:maxLoc[1]+100,maxLoc[0]-100:maxLoc[0]+100]=0
-   # minVal2, maxVal2, minLoc2, maxLoc2=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
+
+    edges_per_area_image[maxLoc[1]-100:maxLoc[1]+100,maxLoc[0]-100:maxLoc[0]+100]=0
+    minVal2, maxVal2, minLoc2, maxLoc2=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
 
     test_time_1=datetime.now()-test_time_1
     test_time_1=test_time_1.total_seconds()
@@ -304,28 +337,28 @@ while(1):
     #print("min val : "  ,minVal," max val ",maxVal," min Loc ",minLoc," max Loc ",maxLoc)
 
     tempx1,tempy1=maxLoc
-   # tempx2,tempy2=maxLoc2
+    tempx2,tempy2=maxLoc2
 
     # yield the current window
 
     if faceExisted_once: # if face exist then draw box over point of maximum edges per area
         #print("fab..")
-#        if maxVal2>5:
- #           cv2.rectangle(frame, (tempx2 - 100, tempy2 - 100), (tempx2 + 100, tempy2 + 100), [255, 255, 255], 3)
-        if maxVal>5 and forget_frames <=0: # forget_frames used to wait until stablization
-            pixels_summation = 0;
-            [a,b,c,d]=hand_region_Window
-            #pixels_summation = np.sum(np.sum(fgmask_on_skin[tempy1 - b:tempy1 +d,tempx1 - a:tempx1 + c]))
-            if(pixels_summation>100 or True ):#not working ##4 is threshold for summing white pixels of moving object as 2nd feature
-                to_detect_hands = True;
-                [left,top,right,bottom]=updateHandRect(edged_fgbmask,maxLoc,frame)#get top and left points of hands not working well
-                tempx1_new, tempy1_new = tempx1,tempy1
+       if maxVal2>5:
+           [left1, top1, right1, bottom1] = updateHandRect(edged_fgbmask, maxLoc2, frame)  # get top and left points of hands not working well
+           tempx2_new, tempy2_new = tempx1, tempy1
+           #  cv2.rectangle(frame, (tempx2 - 100, tempy2 - 100), (tempx2 + 100, tempy2 + 100), [255, 255, 255], 3)
+
+
+       if maxVal>5 and forget_frames <=0: # forget_frames used to wait until stablization
+            to_detect_hands = True;
+            [left,top,right,bottom]=updateHandRect(edged_fgbmask,maxLoc,frame)#get top and left points of hands not working well
+            tempx1_new, tempy1_new = tempx1,tempy1
 
                 #edged_fgbmask[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100]
                 #edged_fgbmask = cv2.dilate(edged_fgbmask, kernel_dilation, iterations=1)
 
             #print("pixels summation : ", pixels_summation/10000," max value ",maxVal)
-        else:
+       else:
             if(forget_frames>-10):
                 forget_frames-=1
             #print("max value ",maxVal)
@@ -340,7 +373,11 @@ while(1):
         #getWristPoints(skin_ycrcb,tempy1_new - b,tempy1_new +d,tempx1_new - a,tempx1_new + c)
         #sprint(" top left : (x1,y1)(x2,y2)  (", a, " , ", b, " ) (",c, " , ",d, " ) ")
         cv2.rectangle(frame, (tempx1_new-100, tempy1_new-100), (tempx1_new+100, tempy1_new+100), [0,255 , 0], 3)
+        cv2.rectangle(frame, (tempx2_new-100, tempy2_new-100), (tempx2_new+100, tempy2_new+100), [0,255 , 0], 3)
         cv2.rectangle(frame, (left, top), (right, bottom), [0,255 , 255], 3)
+        cv2.rectangle(frame, (left1, top1), (right1, bottom1), [0,255 , 255], 3)
+
+
         #cv2.rectangle(skin_ycrcb, (tempx1_new-a, tempy1_new-b), (tempx1_new+c, tempy1_new+d), 155, 3)
    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
    # _, contours, _ = cv2.findContours(fgmask_on_skin[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -364,6 +401,7 @@ while(1):
     cv2.imshow('fgmask',skin_ycrcb)
 
     cv2.imshow('original Frame', frame)
+
 
     k = cv2.waitKey(30) & 0xff
     if k == 27:
