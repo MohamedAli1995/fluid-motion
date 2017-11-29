@@ -9,7 +9,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import time;
 
-frameHistory=400
+frameHistory=800
 hand_region_Window=[60,60,70,100]
 wristx=0
 wristy=0
@@ -205,7 +205,9 @@ def mouseHandler(event,x,y,flags,param):
 
 cap = cv2.VideoCapture(0)
 
-
+cap.set(5,75)
+cap.set(3,640)
+cap.set(4,480)
 
 fgbg = cv2.createBackgroundSubtractorMOG2(history=frameHistory,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 cv2.namedWindow('edged_fgbmask')
@@ -236,6 +238,7 @@ cv2.moveWindow('fgmask',0,700)
 cv2.moveWindow('fgmask colored',720,700)
 cv2.moveWindow('skin_ycrcb',1420,700)
 frame_counter_temp=0
+count=0;
 while(1):
     ret, frame = cap.read()
     [frame_max_y,frame_max_x,dummy]=frame.shape
@@ -333,7 +336,7 @@ while(1):
 
     if faceExisted_once: # if face exist then draw box over point of maximum edges per area
         #print("fab..")
-       if maxVal2>5:
+       if maxVal2>10:
            [left1, top1, right1, bottom1] = updateHandRect(edged_fgbmask, maxLoc2, frame)  # get top and left points of hands not working well
            tempx2_new, tempy2_new = tempx1, tempy1
            #  cv2.rectangle(frame, (tempx2 - 100, tempy2 - 100), (tempx2 + 100, tempy2 + 100), [255, 255, 255], 3)
@@ -374,10 +377,10 @@ while(1):
 
         #cv2.rectangle(skin_ycrcb, (tempx1_new-a, tempy1_new-b), (tempx1_new+c, tempy1_new+d), 155, 3)
    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-   # _, contours, _ = cv2.findContours(fgmask_on_skin[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+   
 
 
-    #print("contours size ", len(contours)," max x ",max_x," max_y ",max_y)
+#print("contours size ", len(contours)," max x ",max_x," max_y ",max_y)
     frames_count+=1;
 
     cv2.imshow('fgmask x normalized skin', fgmask_on_skin_normalized*255)
@@ -399,8 +402,10 @@ while(1):
 
     k = cv2.waitKey(30) & 0xff
     if k==114:
-        #reset counter if 'r' is pressed //debugging mode 
-        frame_counter_temp=0
+        cv2.imwrite("hand"+str(count)+".jpg",frame[tempy1_new-100:tempy1_new+100,tempx1_new-100:tempx1_new+100])
+        count+=1;
+        #reset counter if 'r' is pressed //debugging mode
+        #frame_counter_temp=0
     if k == 27:
         break
 
