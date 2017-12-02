@@ -5,11 +5,12 @@ import cv2
 from datetime import datetime
 #import matplotlib.pyplot as plt
 import time
+import constants as cnst
 import sys
 from multiprocessing import Process, Value, Array, Queue
 
 actionDetector=action.ActionDetector(10)
-frameHistory=10000
+
 hand_region_Window=[60,60,70,100]
 wristx=0
 wristy=0
@@ -445,7 +446,7 @@ def mouseHandler(event,x,y,flags,param):
 
 
 
-fgbg = cv2.createBackgroundSubtractorMOG2(history=frameHistory,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
+fgbg = cv2.createBackgroundSubtractorMOG2(history=cnst.frameHistory,detectShadows=False) # background subtractor object to subtract current frame from average of history frames
 #cv2.namedWindow('edged_fgbmask')
 #cv2.setMouseCallback('edged_fgbmask', mouseHandler)
 x=0
@@ -553,7 +554,7 @@ while(1):
     #frame difference is store in fgmask
     fgmask = fgbg.apply(frame)  #apply background subtractor to get current frame - average(history frames )
     #fgmask=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
+
     # convert RGB to YCR_CB to threshold skin color
     im_ycrcb = cv2.cvtColor(frame, cv2.COLOR_BGR2YCR_CB)
     
@@ -597,7 +598,42 @@ while(1):
 
     edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)# edges per area ( fixed area)
     minVal, maxVal, minLoc, maxLoc=cv2.minMaxLoc(edges_per_area_image) #getting maximum point of maximum edges per area value
+   # edges_per_area_image /= np.maximum(maxVal,1)
+   # edges_per_area_image =np.uint8(edges_per_area_image*255.0)
     cv2.circle(frame,maxLoc,1,(255,0,0),100)
+   # _edged_fgbmask = cv2.dilate(edged_fgbmask, kernel_dilation, iterations=1)
+   # rgb_masked_gray=np.uint8(cv2.cvtColor(rgb_masked_image, cv2.COLOR_RGB2GRAY));
+   # _,contours, hierarchy = cv2.findContours(edges_per_area_image,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+   # _edged_fgbmask = np.uint8(cv2.cvtColor(_edged_fgbmask, cv2.COLOR_GRAY2RGB));
+   # edged_fgbmask = np.uint8(cv2.cvtColor(  edged_fgbmask, cv2.COLOR_GRAY2RGB));
+   # edges_per_area_image = np.uint8(cv2.cvtColor(  edges_per_area_image, cv2.COLOR_GRAY2RGB));
+
+  ## if (len(contours) > 0):
+  #     for [i,cnt] in enumerate(contours):
+  #         rows, cols = edges_per_area_image.shape[:2]
+  #         [vx, vy, x, y] = cv2.fitLine(cnt, cv2.DIST_L2, 0, 0.01, 0.01)
+  #         lefty = int((-x * vy / vx) + y)
+  #         righty = int(((cols - x) * vy / vx) + y)
+  #         cv2.line(edges_per_area_image, (cols - 1, righty), (0, lefty), (0, 255, 0), 2)
+  #         cv2.drawContours(edges_per_area_image, contours, -1, (0, 0, 255), 3)
+
+   #         hull = cv2.convexHull(cnt,returnPoints = False)
+   #         defects = cv2.convexityDefects(cnt, hull)
+   #         if(defects is not None):
+   #             for i in range(defects.shape[0]):
+   #                 s, e, f, d = defects[i, 0]
+   #                 start = tuple(cnt[s][0])
+   #                 end = tuple(cnt[e][0])
+   #                 far = tuple(cnt[f][0])
+   #                 cv2.line(edged_fgbmask, start, end, [0, 255, 0], 2)
+   #                 cv2.circle(edged_fgbmask, far, 5, [0, 0, 255], -1)
+#
+
+    #cv2.imshow("fgbmask_1", edged_fgbmask)
+    #cv2.imshow("edges per area", (edges_per_area_image))
+    #edged_fgbmask = np.uint8(cv2.cvtColor(edged_fgbmask, cv2.COLOR_RGB2GRAY));
+        #cv2.drawContours(_edged_fgbmask, hull,-1, (255, 0,0), 3)
+   # cv2.imshow("countours_edged_fgbmask", _edged_fgbmask)
 
     #cv2.circle(edged_fgbmask, maxLoc, 1, 0, 120)
     #edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)
@@ -650,7 +686,7 @@ while(1):
             #action_state,action=getAction(tempx1_new,tempy1_new)
         #getWristPoints(skin_ycrcb,tempy1_new - b,tempy1_new +d,tempx1_new - a,tempx1_new + c)
         #sprint(" top left : (x1,y1)(x2,y2)  (", a, " , ", b, " ) (",c, " , ",d, " ) ")
-        cv2.rectangle(frame, (left, top), (right, bottom), [0,255 , 255], 3)
+        #cv2.rectangle(frame, (left, top), (right, bottom), [0,255 , 255], 3)
        # cv2.rectangle(frame, (tempx1_new-100, tempy1_new-100), (tempx1_new+100, tempy1_new+100), [0,255 , 0], 3)
 
         # drawing 2nd rectangles over the 2nd hand
@@ -679,7 +715,7 @@ while(1):
     cv2.imshow("skin_ycrcb",skin_ycrcb)
     cv2.imshow('edged_fgbmask',edged_fgbmask)
     cv2.imshow('fgmask',skin_ycrcb)
-    cv2.imshow("kernel.jpg", kernel * 255 )
+    #cv2.imshow("kernel.jpg", kernel * 255 )
     cv2.imshow('original Frame', frame)
     #cv2.imshow('unequalized  Frame', frame_unequalized)
 
