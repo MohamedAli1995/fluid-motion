@@ -653,9 +653,9 @@ while(1):
 
     if True: # if face exist then draw box over point of maximum edges per area
         #print("fab..")
-       #if maxVal2>10:
+       if maxVal2>10:
         #   [left1, top1, right1, bottom1] = updateHandRect(edged_fgbmask, maxLoc2, frame)  # get top and left points of hands not working well
-         #  tempx2_new, tempy2_new = tempx1, tempy1
+       	   tempx2_new, tempy2_new = tempx1, tempy1
            #  cv2.rectangle(frame, (tempx2 - 100, tempy2 - 100), (tempx2 + 100, tempy2 + 100), [255, 255, 255], 3)
 
 
