@@ -8,7 +8,7 @@ class ActionDetector:
         self.tracing_points_max=tracing_points_max
         self.tracing_points = deque([])
         self.ready=False
-        self.swipe_threshold=350
+        self.swipe_threshold=200
         self.swipe=False
     def updateTracingPoints(self,x, y):
         # global tracing_points

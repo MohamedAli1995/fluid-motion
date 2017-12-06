@@ -1,1 +1,3 @@
 frameHistory=400
+displacement_threshold_min=20
+displacement_threshold_max=10000
