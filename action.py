@@ -1,6 +1,6 @@
 import numpy as np
 from collections import deque
-
+import constants as cnst
 
 
 class ActionDetector:
@@ -8,8 +8,9 @@ class ActionDetector:
         self.tracing_points_max=tracing_points_max
         self.tracing_points = deque([])
         self.ready=False
-        self.swipe_threshold=200
+        self.swipe_threshold=cnst.swipe_threshold
         self.swipe=False
+        self.angle=0
     def updateTracingPoints(self,x, y):
         # global tracing_points
         if self.tracing_points.__len__() == self.tracing_points_max:
@@ -33,7 +34,20 @@ class ActionDetector:
         else:
             self.swipe=False
         if self.swipe:
-            self.tracing_points.clear()
             self.ready=False
-            print("swipped with dist",dist)
+            #check if swipe left
+            #calculate angle
+            diff=arr[0]-arr[self.tracing_points_max-1]
+            diff_x=diff[0]
+            diff_y=diff[1]
+            if (diff_x>diff_y) and diff_x>0:
+                print("swipe left ")
+            elif (diff_x > diff_y) and diff_x <= 0:
+                print("swipe right ")
+            elif diff_x <= diff_y and diff_y > 0:
+                print("swipe down ")
+            elif diff_x <= diff_y and diff_y <= 0:
+                print("swipe up ")
+            self.tracing_points.clear()
+
 

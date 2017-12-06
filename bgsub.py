@@ -13,8 +13,8 @@ from multiprocessing import Process, Value, Array, Queue
 tempx1, tempy1 = [300, 300]
 tempx2, tempy2 = [0, 0]
 to_detect_second_hands = False
-actionDetectorA = action.ActionDetector(10)
-actionDetectorB = action.ActionDetector(10)
+actionDetectorA = action.ActionDetector(5)
+actionDetectorB = action.ActionDetector(5)
 frameHistory = 800
 hand_region_Window = [60, 60, 70, 100]
 wristx = 0
@@ -649,7 +649,7 @@ while (1):
                                        maxLoc) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx1_new, tempy1_new], maxLoc) < cnst.displacement_threshold_max):
                     tempx1_new, tempy1_new = maxLoc
-                    update_hand_A = True
+                update_hand_A = True
                 hand_detected_indx = 1
                 cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), 100)
             else:
@@ -657,7 +657,7 @@ while (1):
                                        maxLoc) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx2_new, tempy2_new], maxLoc) < cnst.displacement_threshold_max):
                     tempx2_new, tempy2_new = maxLoc
-                    update_hand_B = True
+                update_hand_B = True
                 cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), 100)
                 hand_detected_indx = 2
 
@@ -672,14 +672,14 @@ while (1):
                                        maxLoc2) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx2_new, tempy2_new], maxLoc2) < cnst.displacement_threshold_max):
                     tempx2_new, tempy2_new = maxLoc2
-                    update_hand_B = True
+                update_hand_B = True
                 cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), 100)
             else:
                 if (utl.euclidian_dist([tempx1_new, tempy1_new],
                                        maxLoc2) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx1_new, tempy1_new], maxLoc2) < cnst.displacement_threshold_max):
                     tempx1_new, tempy1_new = maxLoc2
-                    update_hand_A = True
+                update_hand_A = True
                 cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), 100)
 
 
@@ -703,10 +703,12 @@ while (1):
 
     # tracing hands:
     if update_hand_A:
+        #print("detecting hand A ")
         actionDetectorA.updateTracingPoints(tempx1_new, tempy1_new)
         ret = actionDetectorA.getTracingPoints()
         actionDetectorA.getAction()
     if update_hand_B:
+        #print("detecting hand B ")
         actionDetectorB.updateTracingPoints(tempx2_new, tempy1_new)
         ret = actionDetectorB.getTracingPoints()
         actionDetectorB.getAction()
