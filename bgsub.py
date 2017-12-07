@@ -31,6 +31,8 @@ frames_count = 0;
 frame_max_x = 0;
 frame_max_y = 0;
 cap = cv2.VideoCapture(0)
+cap.set(3,400)
+cap.set(4,400)
 boxA = 0
 boxB = 0
 topLeft = (0, 0)
@@ -518,11 +520,10 @@ while (1):
     edged_fgbmask = cv2.Canny(rgb_masked_image, 35, 150)  # applying canny edge detection
     temp_edge = edged_fgbmask.copy()
 
-    kernel = np.zeros((103, 103), np.double)  # filter to calculate edges within a box
-    cv2.circle(kernel, (51, 51), 1, 1, 100)
+    
     # kernel/=np.sum(np.sum(kernel))
 
-    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)  # edges per area ( fixed area)
+    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, cnst.handKernel )  # edges per area ( fixed area)
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(
         edges_per_area_image)  # getting maximum point of maximum edges per area value
     # cv2.circle(frame,maxLoc,50,(255,0,0),1)
@@ -531,7 +532,7 @@ while (1):
     # detect second hand
     cv2.circle(edged_fgbmask, maxLoc, 1, 0, 130)
     beg = cv2.getTickCount()
-    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, kernel)
+    edges_per_area_image = cv2.filter2D(np.double(edged_fgbmask), -1, cnst.handKernel)
     # print("max value for kernel ",maxVal)
     # edges_per_area_image[maxLoc[1]-100:maxLoc[1]+100,maxLoc[0]-100:maxLoc[0]+100]=0
 
@@ -582,14 +583,14 @@ while (1):
                     tempx1_new, tempy1_new = maxLoc
                 update_hand_A = True
                 hand_detected_indx = 1
-                cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), 100)
+                cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), cnst.handThickness)
             else:
                 if (utl.euclidian_dist([tempx2_new, tempy2_new],
                                        maxLoc) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx2_new, tempy2_new], maxLoc) < cnst.displacement_threshold_max):
                     tempx2_new, tempy2_new = maxLoc
                 update_hand_B = True
-                cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), 100)
+                cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), cnst.handThickness)
                 hand_detected_indx = 2
 
                 #   [left1, top1, right1, bottom1] = updateHandRect(edged_fgbmask, maxLoc2, frame)  # get top and left points of hands not working well
@@ -604,14 +605,14 @@ while (1):
                         [tempx2_new, tempy2_new], maxLoc2) < cnst.displacement_threshold_max):
                     tempx2_new, tempy2_new = maxLoc2
                 update_hand_B = True
-                cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), 100)
+                cv2.circle(frame, (tempx2_new, tempy2_new), 1, (0, 0, 255), cnst.handThickness)
             else:
                 if (utl.euclidian_dist([tempx1_new, tempy1_new],
                                        maxLoc2) > cnst.displacement_threshold_min and utl.euclidian_dist(
                         [tempx1_new, tempy1_new], maxLoc2) < cnst.displacement_threshold_max):
                     tempx1_new, tempy1_new = maxLoc2
                 update_hand_A = True
-                cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), 100)
+                cv2.circle(frame, (tempx1_new, tempy1_new), 1, (255, 0, 0), cnst.handThickness)
 
 
                 # [left,top,right,bottom]=updateHandRect(temp_edge,maxLoc,frame)#get top and left points of hands not working well
@@ -693,7 +694,7 @@ while (1):
     cv2.imshow("skin_ycrcb", skin_ycrcb)
     cv2.imshow('edged_fgbmask', edged_fgbmask)
     cv2.imshow('fgmask', skin_ycrcb)
-    cv2.imshow("kernel.jpg", kernel * 255)
+    #cv2.imshow("kernel.jpg", kernel * 255)
     cv2.imshow('original Frame', frame)
     # cv2.imshow('unequalized  Frame', frame_unequalized)
 
