@@ -1,3 +1,12 @@
+# Python 2/3 compatibility
+from __future__ import print_function
+import sys
+PY3 = sys.version_info[0] == 3
+
+if PY3:
+    xrange = range
+
+
 import numpy as np
 import utilities as utl
 import constants as cnst
@@ -9,6 +18,8 @@ from datetime import datetime
 import time
 import sys
 from multiprocessing import Process, Value, Array, Queue
+
+
 
 tempx1, tempy1 = [300, 300]
 tempx2, tempy2 = [0, 0]
@@ -38,8 +49,43 @@ boxB = 0
 topLeft = (0, 0)
 bottomDown = (0, 0)
 
-
 ###########################################################################################################################################
+
+
+
+def onmouse(event, x, y, flags, param):
+    global selection, drag_start, show_backproj, track_window
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drag_start = (x, y)
+        track_window = None
+    if drag_start:
+        xmin = min(x, drag_start[0])
+        ymin = min(y, drag_start[1])
+        xmax = max(x, drag_start[0])
+        ymax = max(y, drag_start[1])
+        selection = (xmin, ymin, xmax, ymax)
+    if event == cv2.EVENT_LBUTTONUP:
+        drag_start = None
+        track_window = (xmin, ymin, xmax - xmin, ymax - ymin)
+
+def show_hist():
+    bin_count = hist.shape[0]
+    bin_w = 24
+    img = np.zeros((256, bin_count*bin_w, 3), np.uint8)
+    for i in xrange(bin_count):
+        h = int(hist[i])
+        cv2.rectangle(img, (i*bin_w+2, 255), ((i+1)*bin_w-2, 255-h), (int(180.0*i/bin_count), 255, 255), -1)
+    img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+    cv2.imshow('hist', img)
+
+
+
+selection = None
+drag_start = None
+show_backproj = False
+track_window = None
+
+
 def validateBoxes(faces,boxes,centroids):
    
     for face in faces:
@@ -131,7 +177,6 @@ def trackFaces(faces,boxes,receiveQueue,sendQueue,mainQueue):
                 topLeft = (int(box[0]), int(box[1]))
                 bottomDown = (int(box[0] + box[2]), int(box[1] + box[3]))
                 cv2.rectangle(_frame, topLeft, bottomDown, (0,0,0),-1)  # Draw box
-            
             # Check if main program did not take the last frame update the frame
             try:
                 mainQueue.get_nowait()
@@ -404,6 +449,8 @@ cv2.moveWindow('fgmask x normalized skin', 1400, 0)
 cv2.moveWindow('fgmask', 0, 700)
 cv2.moveWindow('fgmask colored', 720, 700)
 cv2.moveWindow('skin_ycrcb', 1420, 700)
+cv2.namedWindow('camshift')
+cv2.setMouseCallback('fgmask colored', onmouse)
 frame_counter_temp = 0
 count = 0;
 
@@ -538,6 +585,54 @@ while (1):
 
     minVal2, maxVal2, minLoc2, maxLoc2 = cv2.minMaxLoc(
         edges_per_area_image)  # getting maximum point of maximum edges per area value
+
+
+
+
+
+
+
+
+
+    vis = rgb_masked_image.copy()
+    hsv = cv2.cvtColor(rgb_masked_image, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, np.array((0., 60., 32.)), np.array((180., 255., 255.)))
+
+    if selection:
+        x0, y0, x1, y1 = selection
+        hsv_roi = hsv[y0:y1, x0:x1]
+        mask_roi = mask[y0:y1, x0:x1]
+        hist = cv2.calcHist( [hsv_roi], [0], mask_roi, [16], [0, 180] )
+        cv2.normalize(hist, hist, 0, 255, cv2.NORM_MINMAX)
+        hist = hist.reshape(-1)
+        show_hist()
+
+        vis_roi = vis[y0:y1, x0:x1]
+        cv2.bitwise_not(vis_roi, vis_roi)
+        vis[mask == 0] = 0
+
+    if track_window and track_window[2] > 0 and track_window[3] > 0:
+        selection = None
+        prob = cv2.calcBackProject([hsv], [0], hist, [0, 180], 1)
+        prob &= mask
+        term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+        track_box, track_window = cv2.CamShift(prob, track_window, term_crit)
+
+        print(track_box,track_window)
+        
+        if show_backproj:
+            vis[:] = prob[...,np.newaxis]
+        try:
+            cv2.ellipse(vis, track_box, (0, 0, 255), 2)
+        except:
+            print(track_box)
+
+    cv2.imshow('camshift', vis)
+
+
+
+
+
 
     # test_time_1=datetime.now()-test_time_1
     # test_time_1=test_time_1.total_seconds()
@@ -721,10 +816,3 @@ print(" start time  : ", start_time)
 print("FPS : ", (frames_count / (diff)))
 cap.release()
 cv2.destroyAllWindows()
-
-
-
-
-
-
-
